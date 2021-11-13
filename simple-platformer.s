@@ -57,6 +57,7 @@ gravity: .res 1
 controller1: .res 1
 pointerHigh: .res 1
 pointerLow: .res 1
+temp: .res 1
 
 ; General RAM
 ;.segment "BSS"
@@ -81,16 +82,16 @@ ReadController:
   rts
 
 MoveSpritesUp:
-  dec player_vel_y
+;  dec player_vel_y
   rts
 MoveSpritesDown:
-  inc player_vel_y
+;  inc player_vel_y
   rts
 MoveSpritesLeft:
-  dec player_vel_x
+;  dec player_vel_x
   rts
 MoveSpritesRight:
-  inc player_vel_x
+;  inc player_vel_x
   rts
 
 SetSpritePositions:
@@ -215,6 +216,7 @@ HandleControllerInput:
   rts
 
 Physics:
+  ; modify player position based on velocity values
   lda player_vel_x
   clc
   adc sprite_x
@@ -224,6 +226,71 @@ Physics:
   clc
   adc sprite_y
   sta sprite_y
+  
+  ; accelerate player if corresponding buttons pressed
+  lda left_latch
+  cmp #01
+  bne @end_left
+  inx
+  dec player_vel_x
+  @end_left:
+
+  lda right_latch
+  cmp #01
+  bne @end_right
+  inx
+  inc player_vel_x
+  @end_right:
+
+  lda up_latch
+  cmp #01
+  bne @end_up
+  inx
+  dec player_vel_y
+  @end_up:
+  
+  lda down_latch
+  cmp #01
+  bne @end_down
+  inx
+  inc player_vel_y
+  @end_down:
+  
+  cpx #00
+  beq @decel
+  rts
+  
+  ; decelerate player if no dpad buttons pressed
+  
+  @decel:
+  lda player_vel_x
+  cmp $00
+  beq @done_player_vel_x
+  bpl @dec_player_vel_x
+  bmi @inc_player_vel_x
+  @inc_player_vel_x:
+  inc player_vel_x
+  jmp @done_player_vel_x
+  @dec_player_vel_x:
+  dec player_vel_x
+  jmp @done_player_vel_x
+  @done_player_vel_x:
+  
+  lda player_vel_y
+  cmp $00
+  beq @done_player_vel_y
+  bpl @dec_player_vel_y
+  bmi @inc_player_vel_y
+  jmp @done_player_vel_y
+  @inc_player_vel_y:
+  inc player_vel_y
+  jmp @done_player_vel_y
+  @dec_player_vel_y:
+  dec player_vel_y
+  jmp @done_player_vel_y
+  @done_player_vel_y:
+  @skip_decel:
+  
 
 VBlankCycle:
   lda PPU_STATUS 
